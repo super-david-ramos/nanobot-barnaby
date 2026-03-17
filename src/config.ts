@@ -67,6 +67,12 @@ export const TRIGGER_PATTERN = new RegExp(
   'i',
 );
 
+// Telegram bot pool for agent teams (send-only bots for subagent identities)
+export const TELEGRAM_BOT_POOL = (process.env.TELEGRAM_BOT_POOL || '')
+  .split(',')
+  .map((t) => t.trim())
+  .filter(Boolean);
+
 // Timezone for scheduled tasks (cron expressions, etc.)
 // Uses system timezone by default
 export const TIMEZONE =
