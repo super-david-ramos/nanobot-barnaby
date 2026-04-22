@@ -10,21 +10,37 @@ jobs:
   update-tokens:
     runs-on: ubuntu-latest
     steps:
+      - name: Check app credentials
+        id: check
+        env:
+          APP_ID: ${{ secrets.APP_ID }}
+        run: |
+          if [ -z "$APP_ID" ]; then
+            echo "::notice::APP_ID secret not configured — skipping update-tokens"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/create-github-app-token@v1
+        if: steps.check.outputs.skip == 'false'
         id: app-token
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - uses: actions/checkout@v4
+        if: steps.check.outputs.skip == 'false'
         with:
           token: ${{ steps.app-token.outputs.token }}
 
       - uses: actions/setup-python@v5
+        if: steps.check.outputs.skip == 'false'
         with:
           python-version: '3.12'
 
       - uses: ./repo-tokens
+        if: steps.check.outputs.skip == 'false'
         id: tokens
         with:
           include: 'src/**/*.ts container/agent-runner/src/**/*.ts container/Dockerfile container/build.sh launchd/com.nanoclaw.plist CLAUDE.md'
@@ -32,6 +48,7 @@ jobs:
           badge-path: 'repo-tokens/badge.svg'
 
       - name: Commit if changed
+        if: steps.check.outputs.skip == 'false'
         run: |
           git add README.md repo-tokens/badge.svg
           git diff --cached --quiet && exit 0

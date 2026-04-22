@@ -25,28 +25,45 @@ jobs:
     if: github.repository != 'qwibitai/nanoclaw'
     runs-on: ubuntu-latest
     steps:
+      - name: Check app credentials
+        id: check
+        env:
+          APP_ID: ${{ secrets.APP_ID }}
+        run: |
+          if [ -z "$APP_ID" ]; then
+            echo "::notice::APP_ID secret not configured — skipping fork sync"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/create-github-app-token@v1
+        if: steps.check.outputs.skip == 'false'
         id: app-token
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - uses: actions/checkout@v4
+        if: steps.check.outputs.skip == 'false'
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
       - uses: actions/setup-node@v4
+        if: steps.check.outputs.skip == 'false'
         with:
           node-version: 20
           cache: npm
 
       - name: Configure git
+        if: steps.check.outputs.skip == 'false'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Sync with upstream main
+        if: steps.check.outputs.skip == 'false'
         id: sync
         run: |
           # Add upstream remote
@@ -91,6 +108,7 @@ jobs:
           echo "synced=true" >> "$GITHUB_OUTPUT"
 
       - name: Merge main into skill branches
+        if: steps.check.outputs.skip == 'false'
         id: merge
         run: |
           # Re-fetch to pick up any changes pushed since job start
@@ -158,7 +176,7 @@ jobs:
           echo "succeeded=$SUCCEEDED" >> "$GITHUB_OUTPUT"
 
       - name: Open issue for upstream sync failure
-        if: steps.sync.outputs.sync_failed == 'true'
+        if: steps.check.outputs.skip == 'false' && steps.sync.outputs.sync_failed == 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -184,7 +202,7 @@ jobs:
             });
 
       - name: Open issue for failed skill merges
-        if: steps.merge.outputs.failed != ''
+        if: steps.check.outputs.skip == 'false' && steps.merge.outputs.failed != ''
         uses: actions/github-script@v7
         with:
           script: |
